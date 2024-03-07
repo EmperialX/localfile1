@@ -22,60 +22,46 @@ class Service(socketserver.BaseRequestHandler):
 
     def handle(self):
         self.send(Fore.GREEN + Style.BRIGHT + caption + Fore.RESET + Style.NORMAL)
-        self.print_out("THANK YOU FOR CONNECTING TO THE SERVER.\n")
+        self.print_out("THANK YOU FOR CONNECTING TO THE SERVER.\n\n")
 
         while True:
             self.send("\n")
             self.print_out("TO VERIFY IF THE SERVER IS STILL THERE, PLEASE SUPPLY A STRING.\n\n")
             sleep(1)
+            
             self.print_out("STRING ['apple']: ")
-            self.send(Fore.YELLOW + Style.BRIGHT)
-            entered = self.receive("")
-            self.send(Fore.RESET + Style.NORMAL)
-
+            entered = self.receive("").strip()
             if entered == "apple":
                 size = len(entered)
-                self.print_out("LENGTH ['%d']: " % size)
+                self.print_out("LENGTH ['%d']: "% size)
                 sleep(1)
-                self.send(Fore.YELLOW + Style.BRIGHT)
-                length = self.receive("")
-                self.send(Fore.RESET + Style.NORMAL)
+                length = int(self.receive("").strip())
+                
+                if length <= 0:
+                    length = size
+                elif length > 20000 or size > 20000:
+                    self.print_out("\n... THE SERVER IS OVERLOADED. PLEASE TRY AGAIN LATER.\n\n")
+                    continue
 
-                if length == "":
-                    length = int(size)
+                original = open("file").read()
+                new = original.replace("#@", "#@" + entered + "@", 1).replace("# @", "#@" + entered + "@", 1)
+                with open("file", "w") as f:
+                    f.write(new)
 
-                length = int(length)
-                with open('file', 'r+') as h:
-                    original = h.read()
-                    if len(original) > 20000 or size > 20000:
-                        self.print_out("\n... THE SERVER IS OVERLOADED. PLEASE TRY AGAIN LATER.\n\n")
-                        return
-
-                    new = original.replace("#@", "#@" + entered + "@", 1)
-                    new = new.replace("# @", "#@" + entered + "@", 1)
-                    h.seek(0)
-                    h.write(new)
-                    h.truncate()
-
-                with open('file', 'r') as n:
-                    returned = n.read(2 + length)[2:].split("###ENDDELIMETER###")[0].lstrip()
-                    if "flag{bfca3d71260e581ba366dca054f5c8e5}" in returned:
-                        returned = returned.replace(
-                            "flag{bfca3d71260e581ba366dca054f5c8e5}",
-                            Fore.GREEN + Style.BRIGHT + "flag{bfca3d71260e581ba366dca054f5c8e5}" + Fore.CYAN + Style.BRIGHT,
-                        )
-                        self.print_out("\n... THE SERVER RETURNED:\n\n")
-                        sleep(1)
-                        self.send(Fore.CYAN + Style.BRIGHT)
-                        self.print_out(returned, 0.01)
-                        self.send(Fore.RESET + Style.NORMAL)
-                        sleep(1)
+                returned = open("file").read(2 + length).split("###ENDDELIMETER###")[0].strip()
+                if "flag{bfca3d71260e581ba366dca054f5c8e5}" in returned:
+                    returned = returned.replace("flag{bfca3d71260e581ba366dca054f5c8e5}",
+                                                Fore.GREEN + Style.BRIGHT + "flag{bfca3d71260e581ba366dca054f5c8e5}" +
+                                                Fore.CYAN + Style.BRIGHT)
+                self.print_out("\n... THE SERVER RETURNED:\n\n")
+                self.print_out(returned, 0.01)
+                sleep(1)
 
     def send(self, string, newline=True):
-        if type(string) is str:
+        if isinstance(string, str):
             string = string.encode("utf-8")
         if newline:
-            string = string + b"\n"
+            string += b"\n"
         self.request.sendall(string)
 
     def receive(self, prompt="> "):
@@ -86,7 +72,7 @@ class ThreadedService(socketserver.ThreadingMixIn, socketserver.TCPServer):
     pass
 
 def main():
-    port = 6573
+    port = 7333
     host = "0.0.0.0"
 
     service = Service
@@ -96,6 +82,10 @@ def main():
     server_thread.daemon = True
     server_thread.start()
     print("Server started on " + str(server.server_address) + "!")
+
+    # Now let the main thread just wait...
+    while True:
+        sleep(10)
 
 if __name__ == "__main__":
     main()
